@@ -21,6 +21,12 @@ class K24PlannerApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const HomeScreen(),
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        );
+      },
     );
   }
 }
