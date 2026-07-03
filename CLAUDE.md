@@ -5,8 +5,10 @@ clock** (a single hand sweeping the dial once per 24h, numbered 1–24, modeled 
 physical 24-hour wall-planner clocks — not a standard 12-hour clock). Recurring and
 one-off tasks are shown as colored arc segments on a ring around the outside of the
 dial, positioned by time of day. Tasks are not stored locally — they **are** the
-user's Google Calendar events, read and written live via the Calendar API after
-signing in with Google.
+user's Google Calendar events, fetched live via the Calendar API after signing in
+with Google. The UI is currently **read-only**: it displays today's events on the
+clock and in a list below, with no add/edit/delete affordances — see "Read-only UI"
+below.
 
 ## Tech stack
 
@@ -39,9 +41,8 @@ lib/
     tasks/
       models/planner_task.dart                # PlannerTask: plain Dart model derived from a calendar Event
       providers/task_providers.dart           # authStateProvider, calendarServiceProvider, todayTasksProvider
-      widgets/task_form_sheet.dart            # Add/edit bottom sheet
-      widgets/task_list_tile.dart             # List row: tap=edit, swipe=delete
-    home/home_screen.dart                     # DayClock + today's task list + FAB + refresh/sign-out
+      widgets/task_list_tile.dart             # Read-only list row: no tap/swipe actions
+    home/home_screen.dart                     # DayClock + today's task list + refresh/sign-out (no FAB)
   shared/
     time_utils.dart                           # Pure, unit-tested time/angle/RRULE helpers
     colors.dart                               # Google Calendar's fixed event colorId -> Color map
@@ -65,17 +66,16 @@ test/
 - **Dial angle**: `minutesToAngle(minutes) = -pi/2 + (minutes/1440) * 2*pi` — puts
   midnight (0/24) at the top of the dial, increasing clockwise.
 - **Recurrence is Calendar-native**: recurring tasks are Google Calendar events with
-  a weekly `RRULE:FREQ=WEEKLY;BYDAY=...`, built from/parsed back into the form's
-  weekday-bitmask UI via `rruleForWeekdaysMask`/`weekdaysMaskFromRecurrence` in
-  `time_utils.dart` (bit0=Monday..bit6=Sunday, `weekdayBit(DateTime.weekday)`,
-  `kAllWeekdaysMask = 127`). One-off tasks have no `recurrence`.
+  a weekly `RRULE:FREQ=WEEKLY;BYDAY=...`. `rruleForWeekdaysMask`/
+  `weekdaysMaskFromRecurrence` in `time_utils.dart` convert between that RRULE
+  string and a weekday bitmask (bit0=Monday..bit6=Sunday, `weekdayBit(DateTime.weekday)`,
+  `kAllWeekdaysMask = 127`) — currently exercised only by `time_utils_test.dart`
+  since there's no add/edit UI to drive them (see "Read-only UI"). One-off tasks
+  have no `recurrence`.
 - **"Today's tasks"** = `CalendarService.fetchToday()` calling
   `events.list(calendarId: 'primary', timeMin/timeMax: today, singleEvents: true)` —
   the Calendar API expands recurring events into today's occurrence server-side;
   there is no client-side weekday filtering.
-- **Editing a recurring task edits the whole series** (`PlannerTask.editTargetId`
-  resolves to the series master event id, not a single occurrence) — simplest
-  correct behavior for v1.
 - **All-day events are not shown**: `PlannerTask.fromEvent` returns null for events
   without a `dateTime` (i.e. all-day events, which have no time-of-day to plot) — a
   v1 limitation.
@@ -84,6 +84,18 @@ test/
   to refresh.
 - Overlapping tasks at the same time simply paint over each other on the ring (later
   entry wins visually) — no collision/stacking layout, by design for v1.
+
+## Read-only UI
+
+The app currently only *displays* today's events — there is no in-app way to add,
+edit, or delete a task. `home_screen.dart` has no FAB, and `task_list_tile.dart` is
+a plain `ListTile` with no `onTap`/`Dismissible`. This was a deliberate scope cut,
+not a missing feature: `CalendarService.createTask`/`updateTask`/`deleteTask` and
+the RRULE builders (`rruleForWeekdaysMask`/`weekdaysMaskFromRecurrence` in
+`time_utils.dart`) are kept as dormant, tested service-layer API — reintroducing
+add/edit UI (e.g. a bottom sheet analogous to the old `task_form_sheet.dart`) can
+build on them directly rather than re-deriving the RRULE/event-write logic. Users
+manage events from the Google Calendar app itself in the meantime.
 
 ## Google Cloud setup (one-time, per developer/device)
 
