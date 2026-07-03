@@ -10,6 +10,11 @@ for today, fetched live via the Calendar API. The app is currently read-only: it
 displays today's schedule but has no in-app way to add, edit, or delete events
 (manage those from Google Calendar itself).
 
+![K24 Planner showing a sample day of events](screenshots/home_screen.png)
+
+*Screenshot from `integration_test/screenshot_test.dart`, which seeds sample
+events (including an overnight task) and was run on a Pixel 6a API 35 emulator.*
+
 See [`CLAUDE.md`](CLAUDE.md) for architecture, conventions, one-time Google Cloud
 OAuth setup, and development commands.
 
