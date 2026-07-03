@@ -6,7 +6,6 @@ import '../clock/widgets/day_clock.dart';
 import '../clock/widgets/task_ring_painter.dart';
 import '../tasks/models/planner_task.dart';
 import '../tasks/providers/task_providers.dart';
-import '../tasks/widgets/task_form_sheet.dart';
 import '../tasks/widgets/task_list_tile.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -42,21 +41,17 @@ class HomeScreen extends ConsumerWidget {
         ),
         _ => const Center(child: CircularProgressIndicator()),
       },
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => showTaskFormSheet(context),
-        child: const Icon(Icons.add),
-      ),
     );
   }
 }
 
-class _TaskListBody extends ConsumerWidget {
+class _TaskListBody extends StatelessWidget {
   const _TaskListBody({required this.tasks});
 
   final List<PlannerTask> tasks;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final todayTasks = [...tasks]
       ..sort((a, b) => a.startMinutes.compareTo(b.startMinutes));
     final arcs = [
@@ -79,22 +74,12 @@ class _TaskListBody extends ConsumerWidget {
         if (todayTasks.isEmpty)
           const SliverFillRemaining(
             hasScrollBody: false,
-            child: Center(child: Text('No tasks for today yet. Tap + to add one.')),
+            child: Center(child: Text('No tasks for today.')),
           )
         else
           SliverList.builder(
             itemCount: todayTasks.length,
-            itemBuilder: (context, index) {
-              final task = todayTasks[index];
-              return TaskListTile(
-                task: task,
-                onDelete: () async {
-                  final calendarService = ref.read(calendarServiceProvider);
-                  await calendarService?.deleteTask(task.editTargetId);
-                  ref.invalidate(todayTasksProvider);
-                },
-              );
-            },
+            itemBuilder: (context, index) => TaskListTile(task: todayTasks[index]),
           ),
       ],
     );
