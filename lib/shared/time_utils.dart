@@ -20,13 +20,34 @@ const int kAllWeekdaysMask = 127;
 /// bitmask.
 int weekdayBit(int weekday) => 1 << (weekday - 1);
 
-/// Whether a weekly recurrence bitmask (bit0=Mon..bit6=Sun) includes the
-/// weekday of [date].
-bool weekdayMaskIncludes(int weekdaysMask, DateTime date) {
-  return (weekdaysMask & weekdayBit(date.weekday)) != 0;
+/// RFC 5545 `BYDAY` day codes, in bitmask order (index 0 = Mon .. 6 = Sun).
+const List<String> _byDayCodes = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
+
+/// Builds a weekly Google Calendar RRULE string from a weekday bitmask
+/// (bit0=Mon..bit6=Sun), e.g. `RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR`.
+String rruleForWeekdaysMask(int weekdaysMask) {
+  final days = [
+    for (var i = 0; i < 7; i++)
+      if ((weekdaysMask & (1 << i)) != 0) _byDayCodes[i],
+  ];
+  return 'RRULE:FREQ=WEEKLY;BYDAY=${days.join(',')}';
 }
 
-/// Whether [a] and [b] fall on the same calendar day.
-bool isSameDate(DateTime a, DateTime b) {
-  return a.year == b.year && a.month == b.month && a.day == b.day;
+/// Parses a weekday bitmask back out of a recurring event's RRULE strings
+/// (as returned by the Calendar API), defaulting to every day if absent or
+/// unparseable.
+int weekdaysMaskFromRecurrence(List<String>? recurrenceRules) {
+  final rrule = recurrenceRules?.firstWhere(
+    (r) => r.startsWith('RRULE:'),
+    orElse: () => '',
+  );
+  if (rrule == null || rrule.isEmpty) return kAllWeekdaysMask;
+  final byDayMatch = RegExp('BYDAY=([A-Z,]+)').firstMatch(rrule);
+  if (byDayMatch == null) return kAllWeekdaysMask;
+  var mask = 0;
+  for (final code in byDayMatch.group(1)!.split(',')) {
+    final index = _byDayCodes.indexOf(code);
+    if (index != -1) mask |= 1 << index;
+  }
+  return mask == 0 ? kAllWeekdaysMask : mask;
 }

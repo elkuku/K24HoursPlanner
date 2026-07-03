@@ -32,33 +32,32 @@ void main() {
     });
   });
 
-  group('weekdayMaskIncludes', () {
-    test('all-days mask includes every weekday', () {
-      for (var i = 1; i <= 7; i++) {
-        final date = DateTime(2026, 7, 5 + i); // 2026-07-06 is a Monday
-        expect(weekdayMaskIncludes(kAllWeekdaysMask, date), isTrue);
-      }
-    });
-
-    test('mask with only Monday excludes Tuesday', () {
-      final monday = DateTime(2026, 7, 6);
-      final tuesday = DateTime(2026, 7, 7);
-      final mondayOnly = weekdayBit(DateTime.monday);
-      expect(weekdayMaskIncludes(mondayOnly, monday), isTrue);
-      expect(weekdayMaskIncludes(mondayOnly, tuesday), isFalse);
-    });
-  });
-
-  group('isSameDate', () {
-    test('same calendar day, different time', () {
+  group('rruleForWeekdaysMask', () {
+    test('all-days mask lists every BYDAY code', () {
       expect(
-        isSameDate(DateTime(2026, 7, 2, 8), DateTime(2026, 7, 2, 23, 59)),
-        isTrue,
+        rruleForWeekdaysMask(kAllWeekdaysMask),
+        'RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR,SA,SU',
       );
     });
 
-    test('different calendar day', () {
-      expect(isSameDate(DateTime(2026, 7, 2), DateTime(2026, 7, 3)), isFalse);
+    test('single weekday mask', () {
+      expect(
+        rruleForWeekdaysMask(weekdayBit(DateTime.monday)),
+        'RRULE:FREQ=WEEKLY;BYDAY=MO',
+      );
+    });
+  });
+
+  group('weekdaysMaskFromRecurrence', () {
+    test('round-trips through rruleForWeekdaysMask', () {
+      final mask = weekdayBit(DateTime.monday) | weekdayBit(DateTime.friday);
+      final rrule = rruleForWeekdaysMask(mask);
+      expect(weekdaysMaskFromRecurrence([rrule]), mask);
+    });
+
+    test('defaults to every day when null or unparseable', () {
+      expect(weekdaysMaskFromRecurrence(null), kAllWeekdaysMask);
+      expect(weekdaysMaskFromRecurrence(['RDATE:20260101']), kAllWeekdaysMask);
     });
   });
 }

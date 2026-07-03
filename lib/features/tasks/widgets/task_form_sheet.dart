@@ -1,15 +1,14 @@
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../data/database/database.dart';
 import '../../../shared/colors.dart';
 import '../../../shared/time_utils.dart';
+import '../models/planner_task.dart';
 import '../providers/task_providers.dart';
 
 const _weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-Future<void> showTaskFormSheet(BuildContext context, {Task? existing}) {
+Future<void> showTaskFormSheet(BuildContext context, {PlannerTask? existing}) {
   return showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -21,7 +20,7 @@ Future<void> showTaskFormSheet(BuildContext context, {Task? existing}) {
 class TaskFormSheet extends ConsumerStatefulWidget {
   const TaskFormSheet({super.key, this.existing});
 
-  final Task? existing;
+  final PlannerTask? existing;
 
   @override
   ConsumerState<TaskFormSheet> createState() => _TaskFormSheetState();
@@ -34,7 +33,8 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
   late bool _isRecurring;
   late int _weekdaysMask;
   late DateTime _specificDate;
-  late Color _color;
+  late String _colorId;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -48,9 +48,19 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
         ? const TimeOfDay(hour: 10, minute: 0)
         : TimeOfDay(hour: task.endMinutes ~/ 60, minute: task.endMinutes % 60);
     _isRecurring = task?.isRecurring ?? true;
-    _weekdaysMask = task?.weekdaysMask ?? kAllWeekdaysMask;
+    _weekdaysMask = kAllWeekdaysMask;
     _specificDate = task?.specificDate ?? DateTime.now();
-    _color = Color(task?.colorValue ?? taskColorPalette.first.toARGB32());
+    _colorId = task?.colorId ?? googleEventColors.keys.first;
+    if (task != null && task.isRecurring) {
+      _loadRecurrence(task.editTargetId);
+    }
+  }
+
+  Future<void> _loadRecurrence(String masterEventId) async {
+    final calendarService = ref.read(calendarServiceProvider);
+    final rules = await calendarService?.fetchRecurrenceRules(masterEventId);
+    if (!mounted) return;
+    setState(() => _weekdaysMask = weekdaysMaskFromRecurrence(rules));
   }
 
   @override
@@ -89,37 +99,57 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
   Future<void> _save() async {
     final title = _titleController.text.trim();
     if (title.isEmpty) return;
-    final db = ref.read(databaseProvider);
-    final companion = TasksCompanion(
-      title: Value(title),
-      startMinutes: Value(_startMinutes),
-      endMinutes: Value(_endMinutes),
-      colorValue: Value(_color.toARGB32()),
-      isRecurring: Value(_isRecurring),
-      weekdaysMask: Value(_isRecurring ? _weekdaysMask : kAllWeekdaysMask),
-      specificDate: Value(
-        _isRecurring
-            ? null
-            : DateTime(_specificDate.year, _specificDate.month, _specificDate.day),
-      ),
-    );
+    final calendarService = ref.read(calendarServiceProvider);
+    if (calendarService == null) return;
+    setState(() => _saving = true);
+    final date = _isRecurring ? DateTime.now() : _specificDate;
+    final anchorDate = DateTime(date.year, date.month, date.day);
+    final recurrenceRules = _isRecurring
+        ? [rruleForWeekdaysMask(_weekdaysMask)]
+        : null;
     final existing = widget.existing;
-    if (existing == null) {
-      await db.into(db.tasks).insert(companion);
-    } else {
-      await (db.update(db.tasks)..where((t) => t.id.equals(existing.id))).write(companion);
+    try {
+      if (existing == null) {
+        await calendarService.createTask(
+          title: title,
+          date: anchorDate,
+          startMinutes: _startMinutes,
+          endMinutes: _endMinutes,
+          colorId: _colorId,
+          recurrenceRules: recurrenceRules,
+        );
+      } else {
+        await calendarService.updateTask(
+          eventId: existing.editTargetId,
+          title: title,
+          date: anchorDate,
+          startMinutes: _startMinutes,
+          endMinutes: _endMinutes,
+          colorId: _colorId,
+          recurrenceRules: recurrenceRules,
+        );
+      }
+      ref.invalidate(todayTasksProvider);
+      if (!mounted) return;
+      Navigator.of(context).pop();
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
-    if (!mounted) return;
-    Navigator.of(context).pop();
   }
 
   Future<void> _delete() async {
     final existing = widget.existing;
     if (existing == null) return;
-    final db = ref.read(databaseProvider);
-    await (db.delete(db.tasks)..where((t) => t.id.equals(existing.id))).go();
-    if (!mounted) return;
-    Navigator.of(context).pop();
+    final calendarService = ref.read(calendarServiceProvider);
+    setState(() => _saving = true);
+    try {
+      await calendarService?.deleteTask(existing.editTargetId);
+      ref.invalidate(todayTasksProvider);
+      if (!mounted) return;
+      Navigator.of(context).pop();
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   @override
@@ -198,12 +228,12 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
             const SizedBox(height: 16),
             Wrap(
               spacing: 8,
-              children: taskColorPalette.map((color) {
-                final selected = color.toARGB32() == _color.toARGB32();
+              children: googleEventColors.entries.map((entry) {
+                final selected = entry.key == _colorId;
                 return GestureDetector(
-                  onTap: () => setState(() => _color = color),
+                  onTap: () => setState(() => _colorId = entry.key),
                   child: CircleAvatar(
-                    backgroundColor: color,
+                    backgroundColor: entry.value,
                     radius: selected ? 18 : 14,
                     child: selected
                         ? const Icon(Icons.check, color: Colors.white, size: 16)
@@ -218,7 +248,7 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
                 if (widget.existing != null)
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: _delete,
+                      onPressed: _saving ? null : _delete,
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Theme.of(context).colorScheme.error,
                       ),
@@ -227,7 +257,10 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
                   ),
                 if (widget.existing != null) const SizedBox(width: 12),
                 Expanded(
-                  child: FilledButton(onPressed: _save, child: const Text('Save')),
+                  child: FilledButton(
+                    onPressed: _saving ? null : _save,
+                    child: const Text('Save'),
+                  ),
                 ),
               ],
             ),

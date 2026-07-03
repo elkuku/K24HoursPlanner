@@ -4,70 +4,115 @@ A Flutter/Dart Android app for daily task planning centered on a **24-hour analo
 clock** (a single hand sweeping the dial once per 24h, numbered 1–24, modeled after
 physical 24-hour wall-planner clocks — not a standard 12-hour clock). Recurring and
 one-off tasks are shown as colored arc segments on a ring around the outside of the
-dial, positioned by time of day.
+dial, positioned by time of day. Tasks are not stored locally — they **are** the
+user's Google Calendar events, read and written live via the Calendar API after
+signing in with Google.
 
 ## Tech stack
 
 - Flutter (Android target only; project was scaffolded with `--platforms=android`).
 - State management: **Riverpod** (`flutter_riverpod`), plain providers — no codegen.
-- Persistence: **Drift** (SQLite) via `drift_flutter`'s `driftDatabase()` helper for
-  app runtime, `NativeDatabase.memory()` for tests.
-- No color-picker or intl dependency: task colors use a small hardcoded Material
-  palette (`lib/shared/colors.dart`); time formatting uses Flutter's built-in
-  `TimeOfDay.format(context)`.
+- Auth: `google_sign_in` v7 (Credential Manager-based) + `googleapis`/`googleapis_auth`
+  for the Calendar API client, bridged via
+  `extension_google_sign_in_as_googleapis_auth`. No local database — see "Google
+  Cloud setup" below for the one-time OAuth configuration this requires.
+- No color-picker or intl dependency: task colors are Google Calendar's own fixed
+  11-color `colorId` palette (`lib/shared/colors.dart`); time formatting uses
+  Flutter's built-in `TimeOfDay.format(context)`.
 
 ## Architecture
 
 ```
 lib/
   main.dart                                  # ProviderScope + runApp
-  app.dart                                   # MaterialApp, Material3 theme
-  data/database/database.dart                # Drift `Tasks` table + AppDatabase
+  app.dart                                   # MaterialApp, Material3 theme, auth gate
+  data/
+    auth/google_auth_service.dart            # Wraps GoogleSignIn.instance (sign in/out, account stream)
+    auth/google_client_config.dart           # googleServerClientId (Web OAuth client id)
+    calendar/calendar_service.dart           # CalendarApi CRUD: fetchToday/create/update/delete
   features/
+    auth/sign_in_screen.dart                 # "Sign in with Google" gate screen
     clock/widgets/
       clock_face_painter.dart                # CustomPainter: 24h dial, ticks, hand
       task_ring_painter.dart                  # CustomPainter: task arcs on outer ring
       day_clock.dart                          # Combines face + ring, live Timer
     tasks/
-      providers/task_providers.dart           # databaseProvider, allTasksProvider, todayTasksProvider
+      models/planner_task.dart                # PlannerTask: plain Dart model derived from a calendar Event
+      providers/task_providers.dart           # authStateProvider, calendarServiceProvider, todayTasksProvider
       widgets/task_form_sheet.dart            # Add/edit bottom sheet
       widgets/task_list_tile.dart             # List row: tap=edit, swipe=delete
-    home/home_screen.dart                     # DayClock + today's task list + FAB
+    home/home_screen.dart                     # DayClock + today's task list + FAB + refresh/sign-out
   shared/
-    time_utils.dart                           # Pure, unit-tested time/angle/weekday helpers
-    colors.dart                               # Preset task color palette
+    time_utils.dart                           # Pure, unit-tested time/angle/RRULE helpers
+    colors.dart                               # Google Calendar's fixed event colorId -> Color map
 test/
   time_utils_test.dart                        # Unit tests for time_utils.dart
-  db_smoke_test.dart                          # Plain `test()` DB round-trip via in-memory Drift
-  widget_test.dart                            # Widget smoke test (overrides todayTasksProvider)
+  widget_test.dart                            # Widget smoke test of HomeScreen (overrides todayTasksProvider)
 ```
 
 ## Key conventions
 
-- **Time storage**: tasks store `startMinutes`/`endMinutes` as minutes-since-midnight
-  (0–1439), not `DateTime`, to avoid timezone/date complexity and to make angle math
-  trivial.
+- **Time storage**: `PlannerTask.startMinutes`/`endMinutes` are minutes-since-midnight
+  (0–1439), derived from a calendar event's local start/end `dateTime` — same
+  convention as before, so `time_utils.dart`'s angle/sweep math and the painters are
+  unchanged.
 - **Overnight wrap**: a task's sweep is
   `((endMinutes - startMinutes) % 1440 + 1440) % 1440` (`sweepMinutes` in
   `time_utils.dart`). This means `endMinutes < startMinutes` (e.g. Sleep 23:00→07:00)
   renders correctly as a single continuous arc across midnight with no special-casing.
+  `CalendarService` also uses `sweepMinutes` to compute an event's actual end
+  `DateTime` when writing.
 - **Dial angle**: `minutesToAngle(minutes) = -pi/2 + (minutes/1440) * 2*pi` — puts
   midnight (0/24) at the top of the dial, increasing clockwise.
-- **Recurrence**: `weekdaysMask` is a bitmask, bit 0 = Monday .. bit 6 = Sunday
-  (`weekdayBit(DateTime.weekday)` / `weekdayMaskIncludes` in `time_utils.dart`).
-  `kAllWeekdaysMask = 127` is the default (every day). One-off tasks instead set
-  `specificDate` and ignore the mask.
-- **"Today's tasks"** (what renders on the ring/list) = recurring tasks whose
-  `weekdaysMask` includes today's weekday, plus one-off tasks whose `specificDate` is
-  today — computed client-side in `todayTasksProvider`, not in SQL.
+- **Recurrence is Calendar-native**: recurring tasks are Google Calendar events with
+  a weekly `RRULE:FREQ=WEEKLY;BYDAY=...`, built from/parsed back into the form's
+  weekday-bitmask UI via `rruleForWeekdaysMask`/`weekdaysMaskFromRecurrence` in
+  `time_utils.dart` (bit0=Monday..bit6=Sunday, `weekdayBit(DateTime.weekday)`,
+  `kAllWeekdaysMask = 127`). One-off tasks have no `recurrence`.
+- **"Today's tasks"** = `CalendarService.fetchToday()` calling
+  `events.list(calendarId: 'primary', timeMin/timeMax: today, singleEvents: true)` —
+  the Calendar API expands recurring events into today's occurrence server-side;
+  there is no client-side weekday filtering.
+- **Editing a recurring task edits the whole series** (`PlannerTask.editTargetId`
+  resolves to the series master event id, not a single occurrence) — simplest
+  correct behavior for v1.
+- **All-day events are not shown**: `PlannerTask.fromEvent` returns null for events
+  without a `dateTime` (i.e. all-day events, which have no time-of-day to plot) — a
+  v1 limitation.
+- `todayTasksProvider` is a `FutureProvider` (no live stream, unlike the old
+  Drift-backed version) — mutations must call `ref.invalidate(todayTasksProvider)`
+  to refresh.
 - Overlapping tasks at the same time simply paint over each other on the ring (later
   entry wins visually) — no collision/stacking layout, by design for v1.
+
+## Google Cloud setup (one-time, per developer/device)
+
+`google_sign_in` v7's Android implementation uses Credential Manager, which needs
+**two** OAuth client IDs in the same Google Cloud project (not just one):
+
+1. Enable the **Google Calendar API** for the project.
+2. **OAuth consent screen**: External, add test users (no verification needed while
+   in testing mode, capped at 100 users).
+3. **Android OAuth client**: package name `com.elkuku.k24_planner` + the signing
+   SHA-1 of each build you'll run (debug keystore: `keytool -list -v -keystore
+   ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass
+   android`). This client is never referenced from Dart code — it's matched
+   automatically by package name + SHA-1.
+4. **Web application OAuth client**: no redirect URIs needed. Its client ID goes into
+   `lib/data/auth/google_client_config.dart` as `googleServerClientId` — required
+   even for an Android-only app, because Credential Manager uses it as the token
+   audience.
+5. Scope requested: `https://www.googleapis.com/auth/calendar.events` (event
+   CRUD only, not full calendar management) — see `calendarEventsScope` in
+   `google_auth_service.dart`.
+
+A release build (or a second dev machine) needs its own SHA-1 added to the same
+Android OAuth client — the Web client ID doesn't change.
 
 ## Commands
 
 ```bash
 flutter pub get
-dart run build_runner build --delete-conflicting-outputs   # regenerate database.g.dart after editing database.dart
 flutter run -d emulator-5554                                # Pixel_6a_API_35 AVD
 flutter analyze
 flutter test
@@ -78,13 +123,13 @@ adb lives at `/home/elkuku/Android/Sdk/platform-tools/adb` (not on PATH by defau
 
 ## Gotchas
 
-- **Widget-testing Riverpod + Drift**: do not instantiate a real Drift database
-  (even `NativeDatabase.memory()`) inside a `testWidgets` block — the FFI calls
-  interact badly with `flutter_test`'s `FakeAsync` zone and can hang the test runner
-  indefinitely. Instead override the relevant provider directly with static data
-  (e.g. `todayTasksProvider.overrideWithValue([...])`). Real DB round-trip tests
-  belong in a plain `test()` (see `test/db_smoke_test.dart`), which runs outside the
-  widget-test zone and works fine.
+- **Widget-testing Riverpod + Google auth**: do not call real `GoogleSignIn`/network
+  code inside a `testWidgets` block. `GoogleSignInAccount` also has no public
+  constructor, so `authStateProvider` can't be faked with a signed-in value from
+  application code — instead test `HomeScreen` directly (bypassing `app.dart`'s auth
+  gate) and override `todayTasksProvider` with static data (e.g.
+  `todayTasksProvider.overrideWithValue(const AsyncValue.data([...]))`), same
+  pattern used pre-migration for Drift. See `test/widget_test.dart`.
 - **Stale `flutter run` processes**: `pkill -f "flutter run -d ..."` can silently
   fail to match, because the actual process is `dartvm ... run -d ...` — "flutter"
   only appears in the binary's path, not the process's own argv in a way that forms
@@ -95,3 +140,8 @@ adb lives at `/home/elkuku/Android/Sdk/platform-tools/adb` (not on PATH by defau
 - Flutter's warm-up frame can call `CustomPainter.paint` with 0×0 constraints before
   real layout happens; `ClockFacePainter` and `DayClock` both guard against
   non-positive radii to avoid a negative-fontSize assertion crash.
+- **Recurring event times without an explicit `timeZone`**: `CalendarService`
+  relies on the Calendar API defaulting to the calendar's own configured timezone
+  when `EventDateTime.timeZone` is omitted (no `timezone`/`intl` dependency is used
+  to look up an IANA zone name client-side). This is correct as long as the device's
+  local timezone matches the Google account's calendar timezone setting.

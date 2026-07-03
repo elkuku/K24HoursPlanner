@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../../../data/database/database.dart';
+import '../../../shared/colors.dart';
+import '../models/planner_task.dart';
 import 'task_form_sheet.dart';
 
 class TaskListTile extends StatelessWidget {
   const TaskListTile({super.key, required this.task, required this.onDelete});
 
-  final Task task;
+  final PlannerTask task;
   final VoidCallback onDelete;
 
   String _formatMinutes(BuildContext context, int minutes) {
@@ -30,11 +31,14 @@ class TaskListTile extends StatelessWidget {
       ),
       onDismissed: (_) => onDelete(),
       child: ListTile(
-        leading: CircleAvatar(backgroundColor: Color(task.colorValue), radius: 12),
+        leading: CircleAvatar(
+          backgroundColor: colorForEventColorId(task.colorId),
+          radius: 12,
+        ),
         title: Text(task.title),
         subtitle: Text(
           '${_formatMinutes(context, task.startMinutes)} – ${_formatMinutes(context, task.endMinutes)}'
-          '${task.isRecurring ? '' : ' · one-off'}',
+          '${task.isRecurring ? ' · recurring' : ''}',
         ),
         onTap: () => showTaskFormSheet(context, existing: task),
       ),
