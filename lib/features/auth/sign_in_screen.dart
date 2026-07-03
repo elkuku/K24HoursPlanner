@@ -32,6 +32,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       body: Center(
         child: Padding(
@@ -39,18 +40,23 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.calendar_month, size: 64),
-              const SizedBox(height: 16),
+              CircleAvatar(
+                radius: 48,
+                backgroundColor: colorScheme.primaryContainer,
+                child: const Text('🕐', style: TextStyle(fontSize: 48)),
+              ),
+              const SizedBox(height: 20),
               Text(
                 'K24 Planner',
-                style: Theme.of(context).textTheme.headlineSmall,
+                style: Theme.of(context).textTheme.headlineMedium,
               ),
               const SizedBox(height: 8),
               const Text(
-                'Sign in with Google to plan your day using your Google Calendar.',
+                'Sign in with Google to see your day on the clock.',
                 textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
               FilledButton.icon(
                 onPressed: _signingIn ? null : _signIn,
                 icon: _signingIn

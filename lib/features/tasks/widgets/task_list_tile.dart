@@ -15,15 +15,57 @@ class TaskListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: colorForEventColorId(task.colorId),
-        radius: 12,
-      ),
-      title: Text(task.title),
-      subtitle: Text(
-        '${_formatMinutes(context, task.startMinutes)} – ${_formatMinutes(context, task.endMinutes)}'
-        '${task.isRecurring ? ' · recurring' : ''}',
+    final color = colorForEventColorId(task.colorId);
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      clipBehavior: Clip.antiAlias,
+      color: color.withValues(alpha: 0.12),
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            Container(width: 8, color: color),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: color,
+                      radius: 18,
+                      child: const Icon(Icons.event, color: Colors.white, size: 18),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            task.title,
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              const Icon(Icons.schedule, size: 14),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${_formatMinutes(context, task.startMinutes)} – ${_formatMinutes(context, task.endMinutes)}',
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

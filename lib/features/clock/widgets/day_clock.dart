@@ -64,30 +64,12 @@ class _DayClockState extends State<DayClock> {
               width: size,
               height: size,
               child: CustomPaint(
-                painter: ClockFacePainter(
-                  now: _now,
-                  faceRadius: faceRadius,
-                  colorScheme: colorScheme,
-                ),
+                painter: ClockFacePainter(now: _now, faceRadius: faceRadius),
               ),
             ),
-            _CenterTime(now: _now),
           ],
         );
       },
     );
-  }
-}
-
-class _CenterTime extends StatelessWidget {
-  const _CenterTime({required this.now});
-
-  final DateTime now;
-
-  @override
-  Widget build(BuildContext context) {
-    final h = now.hour.toString().padLeft(2, '0');
-    final m = now.minute.toString().padLeft(2, '0');
-    return Text('$h:$m', style: Theme.of(context).textTheme.headlineMedium);
   }
 }

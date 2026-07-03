@@ -17,18 +17,19 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('K24 Planner'),
+        title: const Text('🕐 K24 Planner'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
             tooltip: 'Refresh',
             onPressed: () => ref.invalidate(todayTasksProvider),
           ),
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout_rounded),
             tooltip: 'Sign out',
             onPressed: () => ref.read(googleAuthServiceProvider).signOut(),
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: switch (todayTasksAsync) {
@@ -67,19 +68,38 @@ class _TaskListBody extends StatelessWidget {
       slivers: [
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
             child: AspectRatio(aspectRatio: 1, child: DayClock(arcs: arcs)),
           ),
         ),
         if (todayTasks.isEmpty)
           const SliverFillRemaining(
             hasScrollBody: false,
-            child: Center(child: Text('No tasks for today.')),
+            child: Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('🎉', style: TextStyle(fontSize: 56)),
+                    SizedBox(height: 12),
+                    Text(
+                      'Nothing planned for today!',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
           )
         else
-          SliverList.builder(
-            itemCount: todayTasks.length,
-            itemBuilder: (context, index) => TaskListTile(task: todayTasks[index]),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+            sliver: SliverList.builder(
+              itemCount: todayTasks.length,
+              itemBuilder: (context, index) => TaskListTile(task: todayTasks[index]),
+            ),
           ),
       ],
     );

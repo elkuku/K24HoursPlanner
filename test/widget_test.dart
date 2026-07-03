@@ -20,7 +20,7 @@ void main() {
       ),
     );
 
-    expect(find.text('K24 Planner'), findsWidgets);
+    expect(find.textContaining('K24 Planner'), findsWidgets);
 
     // Unmount so DayClock's periodic timer is cancelled before the test ends.
     await tester.pumpWidget(const SizedBox());
