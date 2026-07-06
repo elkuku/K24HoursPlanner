@@ -25,11 +25,26 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            // Points at the checked-in ../debug.keystore (see CLAUDE.md's "Google
+            // Cloud setup") rather than AGP's default debug signing config, whose
+            // keystore location is derived from Android SDK prefs and isn't
+            // guaranteed to be `~/.android/debug.keystore` on every machine/CI
+            // runner — it wasn't on GitHub-hosted runners, which silently signed
+            // with a fresh, unregistered keystore and broke Google Sign-In.
+            storeFile = file("../debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
+            // TODO: Add your own signing config for a real release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }

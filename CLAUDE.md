@@ -176,14 +176,19 @@ Android OAuth client — the Web client ID doesn't change.
 
 **CI note**: `android/debug.keystore` is a checked-in copy of the maintainer's
 local debug keystore (see `android/.gitignore`'s explicit exception for it —
-it's debug-only, fixed-password, never a real release key). `pages.yml`
-restores it to `~/.android/debug.keystore` before `flutter build apk
---release`, so the CI-built APK is signed identically to local `flutter run
---release` builds and matches the SHA-1 already registered above — without
-this, Gradle would auto-generate a fresh random debug keystore on the runner
-and Google Sign-In would fail for anyone installing that APK (unregistered
-SHA-1). Regenerating the maintainer's debug keystore means re-copying it here
-and re-registering the new SHA-1 in Cloud Console.
+it's debug-only, fixed-password, never a real release key). The release
+`signingConfig` in `android/app/build.gradle.kts` points at it directly by
+relative path (`../debug.keystore`) instead of using AGP's default "debug"
+signing config — that default resolves its keystore location via Android SDK
+prefs rather than a fixed `~/.android/debug.keystore` path, and on
+GitHub-hosted Actions runners that resolved somewhere our restored copy
+wasn't, so Gradle silently signed with a fresh unregistered keystore and
+Google Sign-In failed for anyone installing the resulting APK (caught by
+actually installing a CI-built APK and comparing its cert SHA-1 via `apksigner
+verify --print-certs` against the registered one — the mismatch wasn't
+visible from CI logs alone). Pointing at the file directly sidesteps that
+ambiguity on any machine. Regenerating the maintainer's debug keystore means
+re-copying it here and re-registering the new SHA-1 in Cloud Console.
 
 ## Commands
 
