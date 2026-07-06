@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/colors.dart';
 import '../clock/widgets/day_clock.dart';
 import '../clock/widgets/task_ring_painter.dart';
+import '../settings/providers/settings_providers.dart';
+import '../settings/settings_screen.dart';
 import '../tasks/models/planner_task.dart';
 import '../tasks/providers/task_providers.dart';
 import '../tasks/widgets/task_list_tile.dart';
@@ -14,20 +16,18 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final todayTasksAsync = ref.watch(todayTasksProvider);
+    final appTitle = ref.watch(appTitleProvider).value ?? kDefaultAppTitle;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('🕐 K24 Planner'),
+        title: Text(appTitle),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Refresh',
-            onPressed: () => ref.invalidate(todayTasksProvider),
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            tooltip: 'Sign out',
-            onPressed: () => ref.read(googleAuthServiceProvider).signOut(),
+            icon: const Icon(Icons.settings_rounded),
+            tooltip: 'Settings',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const SettingsScreen()),
+            ),
           ),
           const SizedBox(width: 8),
         ],
