@@ -12,6 +12,11 @@ day's schedule but has no in-app way to add, edit, or delete events (manage thos
 from Google Calendar itself). The settings screen lets you rename the app bar
 title, switch the UI language (English, German, or Spanish), and sign out.
 
+**[Download the APK](https://elkuku.github.io/K24HoursPlanner/)** from the
+project's GitHub Pages site, published by
+[`.github/workflows/pages.yml`](.github/workflows/pages.yml) on every push to
+`master`.
+
 ![K24 Planner showing a sample day of events](screenshots/home_screen.png)
 
 *Screenshot from `integration_test/screenshot_test.dart`, which seeds sample
