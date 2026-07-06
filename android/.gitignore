@@ -12,3 +12,11 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+
+# Exception: debug.keystore is intentionally checked in so CI signs release
+# APKs with the same identity as local `flutter run --release` builds (see
+# CLAUDE.md's "Google Cloud setup" — its SHA-1 is what's registered on the
+# Android OAuth client). It's debug-only, fixed-password, never used for a
+# real Play Store release, so publishing it carries none of the risk this
+# ignore rule protects against.
+!debug.keystore

@@ -174,6 +174,17 @@ English (template/fallback), German, and Spanish, via Flutter's official
 A release build (or a second dev machine) needs its own SHA-1 added to the same
 Android OAuth client — the Web client ID doesn't change.
 
+**CI note**: `android/debug.keystore` is a checked-in copy of the maintainer's
+local debug keystore (see `android/.gitignore`'s explicit exception for it —
+it's debug-only, fixed-password, never a real release key). `pages.yml`
+restores it to `~/.android/debug.keystore` before `flutter build apk
+--release`, so the CI-built APK is signed identically to local `flutter run
+--release` builds and matches the SHA-1 already registered above — without
+this, Gradle would auto-generate a fresh random debug keystore on the runner
+and Google Sign-In would fail for anyone installing that APK (unregistered
+SHA-1). Regenerating the maintainer's debug keystore means re-copying it here
+and re-registering the new SHA-1 in Cloud Console.
+
 ## Commands
 
 ```bash
