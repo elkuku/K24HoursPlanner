@@ -51,6 +51,7 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ],
               selected: {selectedDay},
+              showSelectedIcon: false,
               onSelectionChanged: (selection) =>
                   ref.read(selectedDayProvider.notifier).select(selection.first),
             ),
