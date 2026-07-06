@@ -108,7 +108,10 @@ the RRULE builders (`rruleForWeekdaysMask`/`weekdaysMaskFromRecurrence` in
 `time_utils.dart`) are kept as dormant, tested service-layer API — reintroducing
 add/edit UI (e.g. a bottom sheet analogous to the old `task_form_sheet.dart`) can
 build on them directly rather than re-deriving the RRULE/event-write logic. Users
-manage events from the Google Calendar app itself in the meantime.
+manage events from the Google Calendar app itself in the meantime. Note the app
+only requests the read-only `calendarEventsReadonlyScope` (see "Google Cloud
+setup" below) — those write methods will fail until that's widened back to the
+`calendar.events` scope alongside reintroducing the UI.
 
 ## Localization (i18n)
 
@@ -162,9 +165,11 @@ English (template/fallback), German, and Spanish, via Flutter's official
    `lib/data/auth/google_client_config.dart` as `googleServerClientId` — required
    even for an Android-only app, because Credential Manager uses it as the token
    audience.
-5. Scope requested: `https://www.googleapis.com/auth/calendar.events` (event
-   CRUD only, not full calendar management) — see `calendarEventsScope` in
-   `google_auth_service.dart`.
+5. Scope requested: `https://www.googleapis.com/auth/calendar.events.readonly`
+   (read-only, least privilege for the current read-only UI) — see
+   `calendarEventsReadonlyScope` in `google_auth_service.dart`. Reintroducing
+   add/edit UI (see "Read-only UI" below) means widening this to the
+   write-capable `calendar.events` scope.
 
 A release build (or a second dev machine) needs its own SHA-1 added to the same
 Android OAuth client — the Web client ID doesn't change.

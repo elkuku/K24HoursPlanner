@@ -8,10 +8,16 @@ import '../auth/google_auth_service.dart';
 
 const String _kPrimaryCalendarId = 'primary';
 
-/// Reads and writes tasks as events on the signed-in user's primary Google
-/// Calendar. Recurrence is Calendar-native (RRULE): "today's tasks" is
-/// answered by asking the Calendar API to expand occurrences for today
+/// Reads tasks as events on the signed-in user's primary Google Calendar.
+/// Recurrence is Calendar-native (RRULE): "today's tasks" is answered by
+/// asking the Calendar API to expand occurrences for today
 /// (`singleEvents: true`) rather than any client-side weekday matching.
+///
+/// [createTask]/[updateTask]/[deleteTask] below are dormant (see "Read-only
+/// UI" in CLAUDE.md) and will fail with the read-only
+/// [calendarEventsReadonlyScope] this class currently authorizes with — they
+/// need the write-capable `calendar.events` scope, which isn't requested
+/// while there's no UI that calls them.
 class CalendarService {
   CalendarService(this._account);
 
@@ -22,10 +28,10 @@ class CalendarService {
     final cached = _api;
     if (cached != null) return cached;
     final authorization = await _account.authorizationClient.authorizeScopes(
-      const [calendarEventsScope],
+      const [calendarEventsReadonlyScope],
     );
     final client = authorization.authClient(
-      scopes: const [calendarEventsScope],
+      scopes: const [calendarEventsReadonlyScope],
     );
     final api = calendar.CalendarApi(client);
     _api = api;
