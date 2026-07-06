@@ -1,0 +1,21 @@
+{
+  "@@locale": "de",
+  "appName": "K24 Planner",
+  "settingsTooltip": "Einstellungen",
+  "todayLabel": "Heute",
+  "tomorrowLabel": "Morgen",
+  "failedToLoadTasks": "Aufgaben konnten nicht geladen werden: {error}",
+  "nothingPlannedToday": "Für heute ist nichts geplant!",
+  "nothingPlannedTomorrow": "Für morgen ist nichts geplant!",
+  "settingsTitle": "Einstellungen",
+  "appTitleSettingLabel": "App-Titel",
+  "signOut": "Abmelden",
+  "cancel": "Abbrechen",
+  "save": "Speichern",
+  "languageSettingLabel": "Sprache",
+  "chooseLanguage": "Sprache wählen",
+  "signInFailed": "Anmeldung fehlgeschlagen: {error}",
+  "signInSubtitle": "Melde dich mit Google an, um deinen Tag auf der Uhr zu sehen.",
+  "signInButton": "Mit Google anmelden",
+  "signInError": "Anmeldefehler: {error}"
+}

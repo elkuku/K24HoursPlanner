@@ -1,0 +1,84 @@
+{
+  "@@locale": "en",
+  "appName": "K24 Planner",
+  "@appName": {
+    "description": "App name shown in the OS task switcher (not the app bar, which shows the user-editable title)."
+  },
+  "settingsTooltip": "Settings",
+  "@settingsTooltip": {
+    "description": "Tooltip for the settings (cog) button in the home screen's app bar."
+  },
+  "todayLabel": "Today",
+  "@todayLabel": {
+    "description": "Label for the segmented button option showing today's tasks."
+  },
+  "tomorrowLabel": "Tomorrow",
+  "@tomorrowLabel": {
+    "description": "Label for the segmented button option showing tomorrow's tasks."
+  },
+  "failedToLoadTasks": "Failed to load tasks: {error}",
+  "@failedToLoadTasks": {
+    "description": "Shown when fetching tasks from Google Calendar fails.",
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "nothingPlannedToday": "Nothing planned for today!",
+  "@nothingPlannedToday": {
+    "description": "Empty state shown when today has no tasks."
+  },
+  "nothingPlannedTomorrow": "Nothing planned for tomorrow!",
+  "@nothingPlannedTomorrow": {
+    "description": "Empty state shown when tomorrow has no tasks."
+  },
+  "settingsTitle": "Settings",
+  "@settingsTitle": {
+    "description": "Title of the settings screen's app bar."
+  },
+  "appTitleSettingLabel": "App title",
+  "@appTitleSettingLabel": {
+    "description": "Label for the setting that edits the home screen's app bar title."
+  },
+  "signOut": "Sign out",
+  "@signOut": {
+    "description": "Sign-out action label."
+  },
+  "cancel": "Cancel",
+  "@cancel": {
+    "description": "Cancel button label in dialogs."
+  },
+  "save": "Save",
+  "@save": {
+    "description": "Save button label in dialogs."
+  },
+  "languageSettingLabel": "Language",
+  "@languageSettingLabel": {
+    "description": "Label for the language setting."
+  },
+  "chooseLanguage": "Choose language",
+  "@chooseLanguage": {
+    "description": "Title of the language picker dialog."
+  },
+  "signInFailed": "Sign-in failed: {error}",
+  "@signInFailed": {
+    "description": "Snackbar shown when Google sign-in fails.",
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "signInSubtitle": "Sign in with Google to see your day on the clock.",
+  "@signInSubtitle": {
+    "description": "Subtitle shown on the sign-in screen."
+  },
+  "signInButton": "Sign in with Google",
+  "@signInButton": {
+    "description": "Sign-in button label."
+  },
+  "signInError": "Sign-in error: {error}",
+  "@signInError": {
+    "description": "Shown when the auth state stream itself errors.",
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  }
+}

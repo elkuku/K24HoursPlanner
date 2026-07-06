@@ -41,6 +41,9 @@ dependencies:
   extension_google_sign_in_as_googleapis_auth: ^3.0.0
   http: ^1.6.0
   shared_preferences: ^2.5.5
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:
@@ -69,6 +72,10 @@ flutter_launcher_icons:
 
 # The following section is specific to Flutter packages.
 flutter:
+
+  # Generates lib/l10n/gen/app_localizations.dart from the ARB files in
+  # lib/l10n/, per l10n.yaml. Runs automatically on `flutter pub get`/`run`.
+  generate: true
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

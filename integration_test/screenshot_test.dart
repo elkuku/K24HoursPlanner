@@ -6,6 +6,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:k24_planner/features/home/home_screen.dart';
 import 'package:k24_planner/features/tasks/models/planner_task.dart';
 import 'package:k24_planner/features/tasks/providers/task_providers.dart';
+import 'package:k24_planner/l10n/gen/app_localizations.dart';
 
 /// Seeds a handful of sample events (spanning an overnight task and several
 /// Google Calendar colors), for use as the README preview image.
@@ -80,6 +81,8 @@ void main() {
       ProviderScope(
         overrides: [todayTasksProvider.overrideWith((ref) async => sampleTasks)],
         child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: const HomeScreen(),
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),

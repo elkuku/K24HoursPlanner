@@ -1,0 +1,21 @@
+{
+  "@@locale": "es",
+  "appName": "K24 Planner",
+  "settingsTooltip": "Ajustes",
+  "todayLabel": "Hoy",
+  "tomorrowLabel": "Mañana",
+  "failedToLoadTasks": "No se pudieron cargar las tareas: {error}",
+  "nothingPlannedToday": "¡No hay nada planeado para hoy!",
+  "nothingPlannedTomorrow": "¡No hay nada planeado para mañana!",
+  "settingsTitle": "Ajustes",
+  "appTitleSettingLabel": "Título de la app",
+  "signOut": "Cerrar sesión",
+  "cancel": "Cancelar",
+  "save": "Guardar",
+  "languageSettingLabel": "Idioma",
+  "chooseLanguage": "Elegir idioma",
+  "signInFailed": "Error al iniciar sesión: {error}",
+  "signInSubtitle": "Inicia sesión con Google para ver tu día en el reloj.",
+  "signInButton": "Iniciar sesión con Google",
+  "signInError": "Error de inicio de sesión: {error}"
+}

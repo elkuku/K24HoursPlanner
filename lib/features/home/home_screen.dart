@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/gen/app_localizations.dart';
 import '../../shared/colors.dart';
 import '../clock/widgets/day_clock.dart';
 import '../clock/widgets/task_ring_painter.dart';
@@ -15,6 +16,7 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final todayTasksAsync = ref.watch(todayTasksProvider);
     final appTitle = ref.watch(appTitleProvider).value ?? kDefaultAppTitle;
     final selectedDay = ref.watch(selectedDayProvider);
@@ -25,7 +27,7 @@ class HomeScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.settings_rounded),
-            tooltip: 'Settings',
+            tooltip: l10n.settingsTooltip,
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (context) => const SettingsScreen()),
             ),
@@ -38,11 +40,14 @@ class HomeScreen extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
             child: SegmentedButton<PlannerDay>(
-              segments: const [
-                ButtonSegment(value: PlannerDay.today, label: Text('Today')),
+              segments: [
+                ButtonSegment(
+                  value: PlannerDay.today,
+                  label: Text(l10n.todayLabel),
+                ),
                 ButtonSegment(
                   value: PlannerDay.tomorrow,
-                  label: Text('Tomorrow'),
+                  label: Text(l10n.tomorrowLabel),
                 ),
               ],
               selected: {selectedDay},
@@ -53,7 +58,7 @@ class HomeScreen extends ConsumerWidget {
           Expanded(
             child: switch (todayTasksAsync) {
               AsyncError(:final error) => Center(
-                child: Text('Failed to load tasks: $error'),
+                child: Text(l10n.failedToLoadTasks('$error')),
               ),
               AsyncValue(:final value?) => RefreshIndicator(
                 onRefresh: () => ref.refresh(todayTasksProvider.future),
@@ -76,6 +81,7 @@ class _TaskListBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final todayTasks = [...tasks]
       ..sort((a, b) => a.startMinutes.compareTo(b.startMinutes));
     final arcs = [
@@ -108,8 +114,8 @@ class _TaskListBody extends StatelessWidget {
                     const SizedBox(height: 12),
                     Text(
                       selectedDay == PlannerDay.today
-                          ? 'Nothing planned for today!'
-                          : 'Nothing planned for tomorrow!',
+                          ? l10n.nothingPlannedToday
+                          : l10n.nothingPlannedTomorrow,
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                       textAlign: TextAlign.center,
                     ),

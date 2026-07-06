@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/gen/app_localizations.dart';
 import '../tasks/providers/task_providers.dart';
 
 /// Shown when there's no signed-in Google account. K24 Planner reads and
@@ -22,9 +23,10 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       await ref.read(googleAuthServiceProvider).signIn();
     } catch (e) {
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Sign-in failed: $e')));
+      ).showSnackBar(SnackBar(content: Text(l10n.signInFailed('$e'))));
     } finally {
       if (mounted) setState(() => _signingIn = false);
     }
@@ -33,6 +35,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       body: Center(
         child: Padding(
@@ -47,14 +50,14 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
               ),
               const SizedBox(height: 20),
               Text(
-                'K24 Planner',
+                l10n.appName,
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Sign in with Google to see your day on the clock.',
+              Text(
+                l10n.signInSubtitle,
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16),
+                style: const TextStyle(fontSize: 16),
               ),
               const SizedBox(height: 28),
               FilledButton.icon(
@@ -66,7 +69,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.login),
-                label: const Text('Sign in with Google'),
+                label: Text(l10n.signInButton),
               ),
             ],
           ),

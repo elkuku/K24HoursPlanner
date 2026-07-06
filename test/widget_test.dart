@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:k24_planner/features/home/home_screen.dart';
 import 'package:k24_planner/features/tasks/providers/task_providers.dart';
+import 'package:k24_planner/l10n/gen/app_localizations.dart';
 
 void main() {
   testWidgets('renders the K24 Planner app bar', (WidgetTester tester) async {
@@ -16,7 +17,11 @@ void main() {
         overrides: [
           todayTasksProvider.overrideWithValue(const AsyncValue.data([])),
         ],
-        child: const MaterialApp(home: HomeScreen()),
+        child: const MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: HomeScreen(),
+        ),
       ),
     );
 
