@@ -31,7 +31,7 @@ lib/
   data/
     auth/google_auth_service.dart            # Wraps GoogleSignIn.instance (sign in/out, account stream)
     auth/google_client_config.dart           # googleServerClientId (Web OAuth client id)
-    calendar/calendar_service.dart           # CalendarApi CRUD: fetchToday/create/update/delete
+    calendar/calendar_service.dart           # CalendarApi CRUD: fetchForDate/create/update/delete
   features/
     auth/sign_in_screen.dart                 # "Sign in with Google" gate screen
     clock/widgets/
@@ -40,9 +40,12 @@ lib/
       day_clock.dart                          # Combines face + ring, live Timer
     tasks/
       models/planner_task.dart                # PlannerTask: plain Dart model derived from a calendar Event
-      providers/task_providers.dart           # authStateProvider, calendarServiceProvider, todayTasksProvider
+      providers/task_providers.dart           # authStateProvider, calendarServiceProvider, selectedDayProvider, todayTasksProvider
       widgets/task_list_tile.dart             # Read-only list row: no tap/swipe actions
-    home/home_screen.dart                     # DayClock + today's task list + refresh/sign-out (no FAB)
+    settings/
+      providers/settings_providers.dart       # appTitleProvider (persisted via shared_preferences)
+      settings_screen.dart                    # Account info, editable app title, sign-out
+    home/home_screen.dart                     # Today/Tomorrow toggle + DayClock + task list + settings (no FAB)
   shared/
     time_utils.dart                           # Pure, unit-tested time/angle/RRULE helpers
     colors.dart                               # Google Calendar's fixed event colorId -> Color map
@@ -72,16 +75,20 @@ test/
   `kAllWeekdaysMask = 127`) — currently exercised only by `time_utils_test.dart`
   since there's no add/edit UI to drive them (see "Read-only UI"). One-off tasks
   have no `recurrence`.
-- **"Today's tasks"** = `CalendarService.fetchToday()` calling
-  `events.list(calendarId: 'primary', timeMin/timeMax: today, singleEvents: true)` —
-  the Calendar API expands recurring events into today's occurrence server-side;
-  there is no client-side weekday filtering.
+- **"Today's tasks"** = `CalendarService.fetchForDate(date)` calling
+  `events.list(calendarId: 'primary', timeMin/timeMax: date, singleEvents: true)` —
+  the Calendar API expands recurring events into that day's occurrence server-side;
+  there is no client-side weekday filtering. The home screen's Today/Tomorrow
+  `SegmentedButton` drives `selectedDayProvider` (a plain `Notifier<PlannerDay>`),
+  which `todayTasksProvider` watches to pick `date` — despite the name, it now
+  fetches whichever day is selected, not always literally today.
 - **All-day events are not shown**: `PlannerTask.fromEvent` returns null for events
   without a `dateTime` (i.e. all-day events, which have no time-of-day to plot) — a
   v1 limitation.
 - `todayTasksProvider` is a `FutureProvider` (no live stream, unlike the old
   Drift-backed version) — mutations must call `ref.invalidate(todayTasksProvider)`
-  to refresh.
+  to refresh. It also re-fetches automatically whenever `selectedDayProvider`
+  changes (Today vs. Tomorrow).
 - Overlapping tasks at the same time simply paint over each other on the ring (later
   entry wins visually) — no collision/stacking layout, by design for v1.
 

@@ -32,12 +32,11 @@ class CalendarService {
     return api;
   }
 
-  /// Recurring tasks scheduled today, plus one-off tasks whose date is
-  /// today — expanded server-side by the Calendar API.
-  Future<List<PlannerTask>> fetchToday() async {
+  /// Recurring tasks scheduled on [date], plus one-off tasks whose date is
+  /// [date] — expanded server-side by the Calendar API.
+  Future<List<PlannerTask>> fetchForDate(DateTime date) async {
     final api = await _apiClient();
-    final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day);
+    final startOfDay = DateTime(date.year, date.month, date.day);
     final endOfDay = startOfDay.add(const Duration(days: 1));
     final events = await api.events.list(
       _kPrimaryCalendarId,

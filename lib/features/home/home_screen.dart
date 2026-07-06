@@ -17,6 +17,7 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final todayTasksAsync = ref.watch(todayTasksProvider);
     final appTitle = ref.watch(appTitleProvider).value ?? kDefaultAppTitle;
+    final selectedDay = ref.watch(selectedDayProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -32,24 +33,46 @@ class HomeScreen extends ConsumerWidget {
           const SizedBox(width: 8),
         ],
       ),
-      body: switch (todayTasksAsync) {
-        AsyncError(:final error) => Center(
-          child: Text('Failed to load tasks: $error'),
-        ),
-        AsyncValue(:final value?) => RefreshIndicator(
-          onRefresh: () => ref.refresh(todayTasksProvider.future),
-          child: _TaskListBody(tasks: value),
-        ),
-        _ => const Center(child: CircularProgressIndicator()),
-      },
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+            child: SegmentedButton<PlannerDay>(
+              segments: const [
+                ButtonSegment(value: PlannerDay.today, label: Text('Today')),
+                ButtonSegment(
+                  value: PlannerDay.tomorrow,
+                  label: Text('Tomorrow'),
+                ),
+              ],
+              selected: {selectedDay},
+              onSelectionChanged: (selection) =>
+                  ref.read(selectedDayProvider.notifier).select(selection.first),
+            ),
+          ),
+          Expanded(
+            child: switch (todayTasksAsync) {
+              AsyncError(:final error) => Center(
+                child: Text('Failed to load tasks: $error'),
+              ),
+              AsyncValue(:final value?) => RefreshIndicator(
+                onRefresh: () => ref.refresh(todayTasksProvider.future),
+                child: _TaskListBody(tasks: value, selectedDay: selectedDay),
+              ),
+              _ => const Center(child: CircularProgressIndicator()),
+            },
+          ),
+        ],
+      ),
     );
   }
 }
 
 class _TaskListBody extends StatelessWidget {
-  const _TaskListBody({required this.tasks});
+  const _TaskListBody({required this.tasks, required this.selectedDay});
 
   final List<PlannerTask> tasks;
+  final PlannerDay selectedDay;
 
   @override
   Widget build(BuildContext context) {
@@ -73,18 +96,20 @@ class _TaskListBody extends StatelessWidget {
           ),
         ),
         if (todayTasks.isEmpty)
-          const SliverFillRemaining(
+          SliverFillRemaining(
             hasScrollBody: false,
             child: Center(
               child: Padding(
-                padding: EdgeInsets.all(24),
+                padding: const EdgeInsets.all(24),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('🎉', style: TextStyle(fontSize: 56)),
-                    SizedBox(height: 12),
+                    const Text('🎉', style: TextStyle(fontSize: 56)),
+                    const SizedBox(height: 12),
                     Text(
-                      'Nothing planned for today!',
+                      selectedDay == PlannerDay.today
+                          ? 'Nothing planned for today!'
+                          : 'Nothing planned for tomorrow!',
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                       textAlign: TextAlign.center,
                     ),

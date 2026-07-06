@@ -31,13 +31,40 @@ final calendarServiceProvider = Provider<CalendarService?>((ref) {
   return CalendarService(account);
 });
 
-/// Recurring tasks scheduled today, plus one-off tasks whose date is today
-/// — fetched fresh from Google Calendar (recurrence expansion happens
-/// server-side). There's no live stream like the old Drift-backed version,
-/// so callers must `ref.invalidate(todayTasksProvider)` after any
-/// create/update/delete to refresh.
+/// Which day's tasks are currently displayed on the home screen.
+enum PlannerDay {
+  today,
+  tomorrow;
+
+  DateTime toDate() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return switch (this) {
+      PlannerDay.today => today,
+      PlannerDay.tomorrow => today.add(const Duration(days: 1)),
+    };
+  }
+}
+
+class SelectedDayNotifier extends Notifier<PlannerDay> {
+  @override
+  PlannerDay build() => PlannerDay.today;
+
+  void select(PlannerDay day) => state = day;
+}
+
+final selectedDayProvider = NotifierProvider<SelectedDayNotifier, PlannerDay>(
+  SelectedDayNotifier.new,
+);
+
+/// Recurring tasks scheduled on [selectedDayProvider]'s date, plus one-off
+/// tasks whose date matches — fetched fresh from Google Calendar (recurrence
+/// expansion happens server-side). There's no live stream like the old
+/// Drift-backed version, so callers must `ref.invalidate(todayTasksProvider)`
+/// after any create/update/delete to refresh.
 final todayTasksProvider = FutureProvider<List<PlannerTask>>((ref) async {
   final calendarService = ref.watch(calendarServiceProvider);
   if (calendarService == null) return const [];
-  return calendarService.fetchToday();
+  final date = ref.watch(selectedDayProvider).toDate();
+  return calendarService.fetchForDate(date);
 });
