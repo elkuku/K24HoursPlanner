@@ -1,0 +1,73 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.1"
+          channel: stable
+
+      - run: flutter pub get
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Assemble site
+        run: |
+          set -euo pipefail
+          site=_site
+          mkdir -p "$site"
+
+          cp pages/index.html "$site/index.html"
+          cp assets/icon/icon_legacy.png "$site/icon.png"
+          cp screenshots/home_screen.png "$site/screenshot.png"
+          cp build/app/outputs/flutter-apk/app-release.apk "$site/k24-planner.apk"
+
+          version=$(grep '^version:' pubspec.yaml | head -1 | awk '{print $2}')
+          apk_size=$(du -h "$site/k24-planner.apk" | cut -f1)
+          build_date=$(date -u +'%Y-%m-%d')
+          repo_url="https://github.com/${{ github.repository }}"
+
+          sed -i \
+            -e "s|{{VERSION}}|${version}|g" \
+            -e "s|{{APK_SIZE}}|${apk_size}|g" \
+            -e "s|{{BUILD_DATE}}|${build_date}|g" \
+            -e "s|{{REPO_URL}}|${repo_url}|g" \
+            "$site/index.html"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment
