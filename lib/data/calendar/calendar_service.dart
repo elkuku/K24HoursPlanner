@@ -1,6 +1,7 @@
 import 'package:extension_google_sign_in_as_googleapis_auth/extension_google_sign_in_as_googleapis_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/calendar/v3.dart' as calendar;
+import 'package:googleapis_auth/googleapis_auth.dart' show AccessDeniedException;
 
 import '../../features/tasks/models/planner_task.dart';
 import '../../shared/time_utils.dart';
@@ -23,6 +24,7 @@ class CalendarService {
 
   final GoogleSignInAccount _account;
   calendar.CalendarApi? _api;
+  String? _accessToken;
 
   Future<calendar.CalendarApi> _apiClient() async {
     final cached = _api;
@@ -30,6 +32,7 @@ class CalendarService {
     final authorization = await _account.authorizationClient.authorizeScopes(
       const [calendarEventsReadonlyScope],
     );
+    _accessToken = authorization.accessToken;
     final client = authorization.authClient(
       scopes: const [calendarEventsReadonlyScope],
     );
@@ -38,32 +41,65 @@ class CalendarService {
     return api;
   }
 
+  /// Runs [action] against the (possibly cached) [CalendarApi], retrying
+  /// once with a freshly-authorized client if the server rejects the
+  /// cached access token.
+  ///
+  /// `extension_google_sign_in_as_googleapis_auth`'s `authClient()` bakes in
+  /// a fake 365-day expiry (the underlying platform SDK doesn't expose the
+  /// token's real expiry) and no refresh token, so the client we cache in
+  /// [_api] never proactively refreshes — it just keeps using the same
+  /// access token forever. If the app sits backgrounded long enough for
+  /// Google's real (much shorter) server-side expiry to pass, every call
+  /// starts failing with [AccessDeniedException] until the process is
+  /// killed. `google_sign_in`'s own docs describe the fix: clear the stale
+  /// token from the platform's local cache, then re-authorize.
+  Future<T> _run<T>(
+    Future<T> Function(calendar.CalendarApi api) action,
+  ) async {
+    final api = await _apiClient();
+    try {
+      return await action(api);
+    } on AccessDeniedException {
+      _api = null;
+      final staleToken = _accessToken;
+      if (staleToken != null) {
+        await _account.authorizationClient.clearAuthorizationToken(
+          accessToken: staleToken,
+        );
+      }
+      return action(await _apiClient());
+    }
+  }
+
   /// Recurring tasks scheduled on [date], plus one-off tasks whose date is
   /// [date] — expanded server-side by the Calendar API.
-  Future<List<PlannerTask>> fetchForDate(DateTime date) async {
-    final api = await _apiClient();
+  Future<List<PlannerTask>> fetchForDate(DateTime date) {
     final startOfDay = DateTime(date.year, date.month, date.day);
     final endOfDay = startOfDay.add(const Duration(days: 1));
-    final events = await api.events.list(
-      _kPrimaryCalendarId,
-      timeMin: startOfDay,
-      timeMax: endOfDay,
-      singleEvents: true,
-      orderBy: 'startTime',
-    );
-    return [
-      for (final event in events.items ?? const <calendar.Event>[])
-        ?PlannerTask.fromEvent(event),
-    ];
+    return _run((api) async {
+      final events = await api.events.list(
+        _kPrimaryCalendarId,
+        timeMin: startOfDay,
+        timeMax: endOfDay,
+        singleEvents: true,
+        orderBy: 'startTime',
+      );
+      return [
+        for (final event in events.items ?? const <calendar.Event>[])
+          ?PlannerTask.fromEvent(event),
+      ];
+    });
   }
 
   /// Fetches the RRULE strings of a recurring series' master event, for
   /// prefilling the edit form's weekday chips. Returns null if the event
   /// isn't recurring or has no explicit recurrence rules.
-  Future<List<String>?> fetchRecurrenceRules(String masterEventId) async {
-    final api = await _apiClient();
-    final event = await api.events.get(_kPrimaryCalendarId, masterEventId);
-    return event.recurrence;
+  Future<List<String>?> fetchRecurrenceRules(String masterEventId) {
+    return _run((api) async {
+      final event = await api.events.get(_kPrimaryCalendarId, masterEventId);
+      return event.recurrence;
+    });
   }
 
   Future<void> createTask({
@@ -73,19 +109,20 @@ class CalendarService {
     required int endMinutes,
     required String? colorId,
     required List<String>? recurrenceRules,
-  }) async {
-    final api = await _apiClient();
-    await api.events.insert(
-      _buildEvent(
-        title: title,
-        date: date,
-        startMinutes: startMinutes,
-        endMinutes: endMinutes,
-        colorId: colorId,
-        recurrenceRules: recurrenceRules,
-      ),
-      _kPrimaryCalendarId,
-    );
+  }) {
+    return _run((api) async {
+      await api.events.insert(
+        _buildEvent(
+          title: title,
+          date: date,
+          startMinutes: startMinutes,
+          endMinutes: endMinutes,
+          colorId: colorId,
+          recurrenceRules: recurrenceRules,
+        ),
+        _kPrimaryCalendarId,
+      );
+    });
   }
 
   /// Updates the whole event (or, for a recurring task, the whole series —
@@ -98,25 +135,25 @@ class CalendarService {
     required int endMinutes,
     required String? colorId,
     required List<String>? recurrenceRules,
-  }) async {
-    final api = await _apiClient();
-    await api.events.update(
-      _buildEvent(
-        title: title,
-        date: date,
-        startMinutes: startMinutes,
-        endMinutes: endMinutes,
-        colorId: colorId,
-        recurrenceRules: recurrenceRules,
-      ),
-      _kPrimaryCalendarId,
-      eventId,
-    );
+  }) {
+    return _run((api) async {
+      await api.events.update(
+        _buildEvent(
+          title: title,
+          date: date,
+          startMinutes: startMinutes,
+          endMinutes: endMinutes,
+          colorId: colorId,
+          recurrenceRules: recurrenceRules,
+        ),
+        _kPrimaryCalendarId,
+        eventId,
+      );
+    });
   }
 
-  Future<void> deleteTask(String eventId) async {
-    final api = await _apiClient();
-    await api.events.delete(_kPrimaryCalendarId, eventId);
+  Future<void> deleteTask(String eventId) {
+    return _run((api) => api.events.delete(_kPrimaryCalendarId, eventId));
   }
 
   calendar.Event _buildEvent({
